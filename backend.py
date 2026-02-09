@@ -18,11 +18,15 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # TEST için
-    allow_credentials=False,
+    allow_origins=[
+        "https://busrahizliol-svg.github.io",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
 
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
