@@ -127,15 +127,12 @@ def normalize(s: str) -> str:
     for ch in ['"', "'", ".", ",", "?", "!", ":", ";", "(", ")", "[", "]", "{", "}", "-", "_", "/","\\"]:
         s = s.replace(ch, " ")
     return " ".join(s.split())
-
-def answer_from_pdf(question: str, user_type: str, vector_store_id: str) -> Optional[str]:
-    if not vector_store_id:
-        return None
+def answer_from_pdf(question: str, user_type: str, vector_store_id: str):
 
     system_instructions = (
         "Sen emzirme danışmanlığı asistanısın. "
-        "YANITINI SADECE sağlanan PDF içeriklerine dayanarak ver. "
-        "PDF'de cevap yoksa 'Bu PDF’de bu bilgi yok' de. Uydurma."
+        "Yanıtını SADECE verilen PDF içeriğine dayanarak ver. "
+        "PDF'de cevap yoksa aynen şu cümleyi yaz: Bu PDF’de bu bilgi yok."
     )
 
     tone = "sade ve destekleyici" if user_type == "anne" else "akademik ve kanıta dayalı"
@@ -143,26 +140,29 @@ def answer_from_pdf(question: str, user_type: str, vector_store_id: str) -> Opti
     try:
         resp = client.responses.create(
             model="gpt-4.1-mini",
-            instructions=system_instructions + f" Yanıt tonu: {tone}.",
+            instructions=system_instructions + f" Yanıt tonu: {tone}",
             input=question,
             tools=[{
                 "type": "file_search",
                 "vector_store_ids": [vector_store_id]
             }],
         )
-        text = (resp.output_text or "").strip()
+
+        text = resp.output_text
+
         if not text:
             return None
 
-        n = normalize(text)
-        if "bu pdf de bu bilgi yok" in n:
+        text = text.strip()
+
+        if len(text) < 3:
             return None
 
         return text
-    except Exception as e:
-        print("⚠️ PDF cevap hatası:", repr(e))
-        return None
 
+    except Exception as e:
+        print("PDF cevap hatası:", repr(e))
+        return None
 
 @app.get("/")
 def root():
