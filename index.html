@@ -1,156 +1,185 @@
 <!doctype html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Emzirme Danışmanlığı Chatbotu</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin:0; background:#f6f7fb; }
-    .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
-    .card { background:#fff; border-radius:16px; box-shadow: 0 6px 20px rgba(0,0,0,.06); overflow:hidden; }
-    header { padding:16px; border-bottom:1px solid #eee; display:flex; gap:10px; align-items:center; justify-content:space-between; }
-    header h1 { font-size:16px; margin:0; }
-    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    select, input, button { font-size:14px; padding:10px 12px; border-radius:10px; border:1px solid #ddd; }
-    button { cursor:pointer; border:0; background:#111827; color:#fff; }
-    button:disabled { opacity:.5; cursor:not-allowed; }
-    .chat { padding: 14px; height: 62vh; overflow:auto; background:#fbfbfd; }
-    .msg { display:flex; margin:10px 0; }
-    .bubble { max-width: 85%; padding:10px 12px; border-radius:14px; line-height:1.35; white-space:pre-wrap; }
-    .me { justify-content:flex-end; }
-    .me .bubble { background:#111827; color:#fff; border-bottom-right-radius:6px; }
-    .bot .bubble { background:#fff; border:1px solid #eee; border-bottom-left-radius:6px; }
-    .foot { padding: 12px; border-top:1px solid #eee; display:flex; gap:10px; }
-    .foot input { flex:1; }
-    .hint { padding: 10px 16px 14px; color:#6b7280; font-size:12px; }
-    .badge { font-size:12px; padding:6px 10px; border-radius:999px; background:#eef2ff; color:#3730a3; }
-    .err { color:#b91c1c; font-size:12px; padding: 0 16px 14px; display:none; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Emzirme Danışmanlığı Chatbotu</title>
+
+<style>
+body { font-family: system-ui; margin:0; background:#f6f7fb; }
+.wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
+.card { background:#fff; border-radius:16px; box-shadow: 0 6px 20px rgba(0,0,0,.06); overflow:hidden; }
+header { padding:16px; border-bottom:1px solid #eee; }
+.chat { padding:14px; height:60vh; overflow:auto; }
+.msg { display:flex; margin:10px 0; }
+.me { justify-content:flex-end; }
+.bubble { padding:10px; border-radius:12px; background:#eee; }
+.me .bubble { background:#111827; color:white; }
+.foot { padding:12px; border-top:1px solid #eee; display:flex; gap:10px; }
+.badge { font-size:12px; padding:6px; background:#eef2ff; }
+</style>
+
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <header>
-        <div class="row">
-          <span class="badge">Emzirme Danışmanlığı</span>
-          <h1>Chatbot</h1>
-        </div>
-        <div class="row">
-          <label for="userType">Mod:</label>
-          <select id="userType">
-            <option value="anne" selected>Anne</option>
-            <option value="ogrenci">Öğrenci</option>
-          </select>
 
-          <label for="server">Server:</label>
-          <input id="server" value="https://newemzirme.onrender.com" style="width:190px" />
-          <button id="pingBtn" type="button">Bağlantı Testi</button>
-        </div>
-      </header>
+<div class="wrap">
+<div class="card">
 
-      <div id="chat" class="chat"></div>
-      <div id="err" class="err"></div>
+<header>
 
-      <div class="foot">
-        <input id="input" placeholder="Mesajını yaz… (örn: Sütü buzdolabında kaç gün saklayabilirim?)" />
-        <button id="sendBtn">Gönder</button>
-      </div>
+<span class="badge">Emzirme Chatbotu</span>
 
-      <div class="hint">
-        ⚠️ Bu sistem ilaç dozu vermez ve acil belirtilerde sağlık kuruluşuna yönlendirir.
-      </div>
-    </div>
-  </div>
+<br><br>
 
-  <script>
-    // Basit, anonim oturum kimliği (aynı kullanıcıyı saymak için)
-    const sessionId = localStorage.getItem("session_id") || crypto.randomUUID();
-    localStorage.setItem("session_id", sessionId);
+Server:
+<input id="server" value="https://newemzirme.onrender.com">
 
-    const chatEl = document.getElementById("chat");
-    const inputEl = document.getElementById("input");
-    const sendBtn = document.getElementById("sendBtn");
-    const userTypeEl = document.getElementById("userType");
-    const serverEl = document.getElementById("server");
-    const errEl = document.getElementById("err");
-    const pingBtn = document.getElementById("pingBtn");
+<button id="pingBtn">Bağlantı Testi</button>
 
-    function addMsg(text, who="bot") {
-      const row = document.createElement("div");
-      row.className = "msg " + (who === "me" ? "me" : "bot");
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      bubble.textContent = text;
-      row.appendChild(bubble);
-      chatEl.appendChild(row);
-      chatEl.scrollTop = chatEl.scrollHeight;
-    }
+<br><br>
 
-    function showError(msg) {
-      errEl.style.display = msg ? "block" : "none";
-      errEl.textContent = msg || "";
-    }
+PDF:
+<input type="file" id="pdfFile" accept="application/pdf">
 
-    async function ping() {
-      showError("");
-      const base = serverEl.value.replace(/\/+$/, "");
-      try {
-        const r = await fetch(base + "/");
-        if (!r.ok) throw new Error("Sunucu yanıtı: " + r.status);
-        const j = await r.json();
-        addMsg("✅ Bağlantı tamam: " + (j.message || "OK"), "bot");
-      } catch (e) {
-        showError("Bağlantı kurulamadı. Sunucu çalışıyor mu? (Terminalde uvicorn açık olmalı). Hata: " + e.message);
-      }
-    }
+<button id="uploadBtn">PDF Yükle</button>
 
-    async function send() {
-      const text = inputEl.value.trim();
-      if (!text) return;
+<span id="pdfStatus">PDF yok</span>
 
-      showError("");
-      addMsg(text, "me");
-      inputEl.value = "";
+</header>
 
-      sendBtn.disabled = true;
-      const base = serverEl.value.replace(/\/+$/, "");
+<div id="chat" class="chat"></div>
 
-      try {
-        const payload = {
-          question: text,
-          user_type: userTypeEl.value,
-          session_id: sessionId
-        };
+<div class="foot">
 
-        const r = await fetch(base + "/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+<input id="input">
 
-        if (!r.ok) {
-          const t = await r.text();
-          throw new Error("HTTP " + r.status + " - " + t);
-        }
+<button id="sendBtn">Gönder</button>
 
-        const j = await r.json();
-        addMsg(j.answer || "Cevap alınamadı.", "bot");
-      } catch (e) {
-        showError("İstek başarısız. (CORS/Server) Hata: " + e.message);
-      } finally {
-        sendBtn.disabled = false;
-        inputEl.focus();
-      }
-    }
+</div>
 
-    // İlk mesaj
-    addMsg("Merhaba, ben emzirme konusunda sana yardımcı olmak için buradayım 💙", "bot");
+</div>
+</div>
 
-    sendBtn.addEventListener("click", send);
-    inputEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") send();
-    });
-    pingBtn.addEventListener("click", ping);
-  </script>
+<script>
+
+const sessionId = localStorage.getItem("session_id") || crypto.randomUUID();
+localStorage.setItem("session_id", sessionId);
+
+const chatEl = document.getElementById("chat");
+const inputEl = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const serverEl = document.getElementById("server");
+
+const uploadBtn = document.getElementById("uploadBtn");
+const pdfFileEl = document.getElementById("pdfFile");
+const pdfStatusEl = document.getElementById("pdfStatus");
+
+let vectorStoreId = localStorage.getItem("vector_store_id") || null;
+
+if(vectorStoreId)
+pdfStatusEl.textContent = "PDF hazır";
+
+function addMsg(text, who="bot"){
+
+const row=document.createElement("div");
+row.className="msg "+(who=="me"?"me":"bot");
+
+const bubble=document.createElement("div");
+bubble.className="bubble";
+bubble.textContent=text;
+
+row.appendChild(bubble);
+chatEl.appendChild(row);
+
+chatEl.scrollTop=chatEl.scrollHeight;
+
+}
+
+async function uploadPdf(){
+
+const file=pdfFileEl.files[0];
+
+if(!file){
+
+alert("PDF seç");
+
+return;
+
+}
+
+pdfStatusEl.textContent="Yükleniyor...";
+
+const formData=new FormData();
+
+formData.append("file",file);
+
+const base=serverEl.value;
+
+const r=await fetch(base+"/pdf/upload",{
+
+method:"POST",
+
+body:formData
+
+});
+
+const j=await r.json();
+
+vectorStoreId=j.vector_store_id;
+
+localStorage.setItem("vector_store_id",vectorStoreId);
+
+pdfStatusEl.textContent="PDF hazır";
+
+addMsg("PDF yüklendi. Artık PDF'den cevap verebilirim.");
+
+}
+
+async function send(){
+
+const text=inputEl.value;
+
+if(!text)return;
+
+addMsg(text,"me");
+
+inputEl.value="";
+
+const base=serverEl.value;
+
+const payload={
+
+question:text,
+
+session_id:sessionId,
+
+vector_store_id:vectorStoreId
+
+};
+
+const r=await fetch(base+"/chat",{
+
+method:"POST",
+
+headers:{"Content-Type":"application/json"},
+
+body:JSON.stringify(payload)
+
+});
+
+const j=await r.json();
+
+addMsg(j.answer);
+
+}
+
+uploadBtn.onclick=uploadPdf;
+
+sendBtn.onclick=send;
+
+addMsg("Merhaba 💙 PDF yükleyebilir ve soru sorabilirsin.");
+
+</script>
+
 </body>
 </html>
