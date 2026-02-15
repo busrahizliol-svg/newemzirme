@@ -2,3 +2,5 @@ fastapi
 uvicorn
 pydantic
 psycopg[binary]
+openai
+python-multipart
